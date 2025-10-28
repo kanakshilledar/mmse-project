@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "created_by": "alice",
+    "amount": "5000",
+    "reason": "Workshop materials",
+    "status": "PENDING"
+  },
+  {
+    "id": 2,
+    "created_by": "alice",
+    "amount": "100",
+    "reason": "training",
+    "status": "PENDING"
+  }
+]
