@@ -1,11 +1,21 @@
 # event_workflow.py
-# UPDATED: Works with Client objects instead of strings.
+# Contains all logic for the event request workflow.
+# REFACTORED:
+# 1. Now uses request.add_comment() to log structured comments.
+# 2. Added a _find_user_or_raise helper to reduce code duplication.
 
-import models 
+import models # We import the data classes
+
+def _find_user_or_raise(system, role):
+    """A private helper to find a user or raise an error."""
+    user = system.find_user_by_role(role)
+    if not user:
+        raise EnvironmentError(f"System Error: No {role} user found.")
+    return user
 
 def create_draft_request(system, current_user):
     """
-    NEW: Creates a new, blank draft request.
+    Creates a new, blank draft request.
     """
     # 1. Authorization Check
     if not current_user or current_user.role != "CS":
@@ -22,7 +32,7 @@ def create_draft_request(system, current_user):
 
 def update_draft_request(system, current_user, request, client=None, event_type=None, date=None, preferences=None):
     """
-    NEW: Updates fields on an existing draft request.
+    Updates fields on an existing draft request.
     """
     # 1. Authorization Check
     if not current_user or current_user.role != "CS":
@@ -32,7 +42,6 @@ def update_draft_request(system, current_user, request, client=None, event_type=
         raise PermissionError("You cannot edit this request.")
         
     # 2. Update fields
-    # This logic allows for partial updates
     if client:
         request.client = client
     if event_type:
@@ -50,7 +59,6 @@ def initiate_event_request(system, current_user, request):
     """
     Use Case: Submit a completed draft for approval.
     Workflow: CS -> SCS
-    --- THIS FUNCTION IS HEAVILY MODIFIED ---
     """
     
     # 1. Authorization Check
@@ -64,9 +72,7 @@ def initiate_event_request(system, current_user, request):
         raise ValueError("Cannot submit incomplete draft. Client, Event Type, and Date are required.")
 
     # 3. Find the next person in the workflow (SCS)
-    scs_officer = system.find_user_by_role("SCS")
-    if not scs_officer:
-        raise EnvironmentError("System Error: No Senior Customer Service (SCS) user found.")
+    scs_officer = _find_user_or_raise(system, "SCS")
         
     # 4. Set the new state of the request
     request.status = "Pending SCS Review"
@@ -75,9 +81,6 @@ def initiate_event_request(system, current_user, request):
     print(f"Event request (ID: {request.request_id}) submitted to '{scs_officer.username}'.")
     return request
 
-# ... (scs_review, fm_review, am_decide functions are unchanged) ...
-# --- Rest of the workflow functions (scs_review, etc.) ---
-# ... (no change from previous)
 def scs_review(system, current_user, request, is_approved, comments):
     """
     Use Case: Request Review (SCS)
@@ -90,18 +93,12 @@ def scs_review(system, current_user, request, is_approved, comments):
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
     
-    # 2. Add comments (as per use case)
-    if comments:
-        # We log who made the comment
-        comment_entry = f"SCS ({current_user.username}): {comments}"
-        request.comments_log.append(comment_entry)
+    # 2. REFACTORED: Add structured comment
+    request.add_comment(user=current_user, message=comments)
         
     # 3. Process Logic
     if is_approved:
-        fm_manager = system.find_user_by_role("FM")
-        if not fm_manager:
-            raise EnvironmentError("System Error: No Financial Manager (FM) user found.")
-            
+        fm_manager = _find_user_or_raise(system, "FM")
         request.status = "Pending FM Review"
         request.owner = fm_manager
         print(f"Request {request.request_id} approved by SCS, sent to FM.")
@@ -111,7 +108,7 @@ def scs_review(system, current_user, request, is_approved, comments):
         request.status = "Rejected by SCS"
         request.owner = cs_initiator
         print(f"Request {request.request_id} rejected by SCS, sent back to CS.")
-        
+
 def fm_review(system, current_user, request, is_approved, comments):
     """
     Workflow: FM -> AM (if approved) or FM -> SCS (if rejected)
@@ -123,27 +120,20 @@ def fm_review(system, current_user, request, is_approved, comments):
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
         
-    # 2. Process Logic
+    # 2. REFACTORED: Add structured comment
+    request.add_comment(user=current_user, message=comments)
+        
+    # 3. Process Logic
     if is_approved:
-        # Find the next person: Administration Manager (AM)
-        am_manager = system.find_user_by_role("AM")
-        if not am_manager:
-            raise EnvironmentError("System Error: No Administration Manager (AM) user found.")
-            
+        am_manager = _find_user_or_raise(system, "AM")
         request.status = "Pending AM Review"
         request.owner = am_manager
         print(f"Request {request.request_id} approved by FM, sent to AM.")
     else:
-        # Rejected, send back to Senior Customer Service (SCS)
-        scs_officer = system.find_user_by_role("SCS")
-        if not scs_officer:
-            raise EnvironmentError("System Error: No Senior Customer Service (SCS) user found.")
-            
+        scs_officer = _find_user_or_raise(system, "SCS")
         request.status = "Rejected by FM"
         request.owner = scs_officer
         print(f"Request {request.request_id} rejected by FM, sent back to SCS.")
-    
-    # You could add comments to the request object here, e.g., request.fm_comments = comments
 
 def am_decide(system, current_user, request, is_approved, comments):
     """
@@ -156,12 +146,13 @@ def am_decide(system, current_user, request, is_approved, comments):
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
         
+    # 2. REFACTORED: Add structured comment
+    request.add_comment(user=current_user, message=comments)
+
     # Find the SCS officer to report back to
-    scs_officer = system.find_user_by_role("SCS")
-    if not scs_officer:
-        raise EnvironmentError("System Error: No Senior Customer Service (SCS) user found.")
+    scs_officer = _find_user_or_raise(system, "SCS")
     
-    # 2. Process Logic
+    # 3. Process Logic
     if is_approved:
         request.status = "Approved - Pending Finalization"
         request.owner = scs_officer
@@ -170,6 +161,3 @@ def am_decide(system, current_user, request, is_approved, comments):
         request.status = "REJECTED by AM"
         request.owner = scs_officer
         print(f"Request {request.request_id} REJECTED by AM, sent back to SCS.")
-        
-    # e.g., request.am_comments = comments
-# ... and so on for fm_review, am_decide, etc.

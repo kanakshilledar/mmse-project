@@ -20,7 +20,7 @@ def create_client(system, current_user, client_name):
     Use Case: Create new client profile.
     Prevents duplication.
     """
-    # [cite_start]Authorization: Based on the slide [cite: 89] and prompt.
+    # Authorization: Based on the slide and prompt.
     allowed_roles = ["CS", "SCS"]
     if current_user.role not in allowed_roles:
         raise PermissionError("Only Customer Service officers can create new clients.")

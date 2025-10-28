@@ -7,66 +7,32 @@ import client_workflow
 class SEP_System:
     """
     The main system class.
-    - Holds all in-memory data (users, requests) [cite: 86]
-    - Manages authentication (login/logout) [cite: 88]
+    - Holds all in-memory data (users, requests)
+    - Manages authentication (login/logout)
     - Delegates business logic to workflow modules.
+    
+    REFACTORED: This class now uses dictionaries for data storage
+    to allow for fast, O(1) lookups by ID or username.
     """
     def __init__(self):
-        self.users = []
-        self.event_requests = []
-        self.clients = [] # NEW list to store clients
+        # REFACTORED: Data structures are now dictionaries (hash maps).
+        # This provides fast lookups by a unique key.
+        self.users = {}          # key: username, value: User object
+        self.clients = {}        # key: record_number, value: Client object
+        self.event_requests = {} # key: request_id, value: EventRequest object
+        
+        # REFACTORED: Added robust counters for unique ID generation.
+        self.next_client_id = 1
+        self.next_request_id = 1
+        
         self.current_user = None
 
-    # --- System Utility Methods ---
+    # --- Authentication ---
     
-    def add_user(self, user):
-        self.users.append(user)
-
-    def add_request(self, request):
-        request.request_id = len(self.event_requests) + 1
-        self.event_requests.append(request)
-        
-        # --- THIS IS THE FIX ---
-        # A draft might not have a client yet, so we must check
-        if request.client:
-            # Also link it to the client
-            request.client.event_history.append(request)
-        # --- END OF FIX ---
-    def find_user(self, username):
-        for user in self.users:
-            if user.username == username:
-                return user
-        return None
-        
-    def find_user_by_role(self, role):
-        for user in self.users:
-            if user.role == role:
-                return user # Returns the first user with that role
-        return None
-
-    def find_request_by_id(self, request_id):
-        for req in self.event_requests:
-            if req.request_id == request_id:
-                return req
-        return None
-# --- System Utility Methods (Clients) - NEW ---
-    def add_client(self, client):
-        client.record_number = f"c{len(self.clients) + 1}" # e.g., "c1", "c2"
-        self.clients.append(client)
-        
-    def find_client_by_name(self, client_name):
-        for client in self.clients:
-            if client.name.lower() == client_name.lower():
-                return client
-        return None
-
-    def find_client_by_record_number(self, record_number):
-        for client in self.clients:
-            if client.record_number == record_number:
-                return client
-        return None
     def login(self, username):
-        user = self.find_user(username)
+        """Logs in a user by their username."""
+        # REFACTORED: Fast O(1) lookup instead of a list loop
+        user = self.users.get(username)
         if user:
             self.current_user = user
             print(f"User '{username}' logged in. Role: '{user.role}'")
@@ -74,9 +40,79 @@ class SEP_System:
             raise ValueError(f"User '{username}' not found.")
             
     def logout(self):
+        """Logs out the current user."""
         self.current_user = None
 
-# --- Workflow Delegate Methods (Client) - NEW ---
+    # --- User Management ---
+    
+    def add_user(self, user):
+        """Adds a new user to the system."""
+        # REFACTORED: Adds to a dictionary using username as the key
+        if user.username in self.users:
+            raise ValueError(f"User '{user.username}' already exists.")
+        self.users[user.username] = user
+
+    def find_user(self, username):
+        """Finds a user by their username."""
+        # REFACTORED: Fast O(1) lookup
+        return self.users.get(username)
+        
+    def find_user_by_role(self, role):
+        """Finds the *first* user with a specific role."""
+        # REFACTORED: Iterates over dictionary values
+        for user in self.users.values():
+            if user.role == role:
+                return user # Returns the first user with that role
+        return None
+
+    # --- Client Management ---
+
+    def add_client(self, client):
+        """Adds a new client, assigning a unique record number."""
+        # REFACTORED: Uses the ID counter
+        record_number = f"c{self.next_client_id}"
+        self.next_client_id += 1
+        
+        client.record_number = record_number
+        self.clients[record_number] = client
+        return client
+        
+    def find_client_by_record_number(self, record_number):
+        """Finds a client by their unique record number."""
+        # REFACTORED: Fast O(1) lookup
+        return self.clients.get(record_number)
+
+    def find_client_by_name(self, client_name):
+        """Finds the *first* client by their name (case-insensitive)."""
+        # REFACTORED: Iterates over dictionary values
+        for client in self.clients.values():
+            if client.name.lower() == client_name.lower():
+                return client
+        return None
+
+    # --- Event Request Management ---
+
+    def add_request(self, request):
+        """Adds a new event request, assigning a unique ID."""
+        # REFACTORED: Uses the ID counter
+        request_id = self.next_request_id
+        self.next_request_id += 1
+        
+        request.request_id = request_id
+        self.event_requests[request_id] = request
+        
+        # This logic is still correct and handles the "missing relationship"
+        # of a draft request not having a client.
+        if request.client:
+            request.client.event_history.append(request)
+        return request
+
+    def find_request_by_id(self, request_id):
+        """Finds an event request by its unique ID."""
+        # REFACTORED: Fast O(1) lookup
+        return self.event_requests.get(request_id)
+
+    # --- Workflow Delegate Methods (Client) ---
     
     def search_client_by_name(self, client_name):
         """Delegates searching to the client_workflow."""
@@ -93,28 +129,24 @@ class SEP_System:
             current_user=self.current_user,
             client_name=client_name
         )
-    # --- Workflow Delegate Methods (Event) - UPDATED ---        
 
-    # --- Workflow "Delegate" Methods ---
-    # These functions call the imported logic
+    # --- Workflow Delegate Methods (Event) --- 
+
     def create_draft_request(self):
-        """
-        NEW: Delegates creating a blank draft.
-        """
+        """Delegates creating a blank draft."""
         return event_workflow.create_draft_request(
             system=self,
             current_user=self.current_user
         )
         
     def update_draft_request(self, request_id, client_record_number=None, event_type=None, date=None, preferences=None):
-        """
-        NEW: Delegates updating a draft.
-        """
+        """Delegates updating a draft."""
+        
+        # REFACTORED: Lookups are now fast O(1) operations
         request = self.find_request_by_id(request_id)
         if not request:
             raise ValueError(f"Request ID {request_id} not found.")
             
-        # Find the client object if an ID was provided
         client = None
         if client_record_number:
             client = self.find_client_by_record_number(client_record_number)
@@ -129,13 +161,10 @@ class SEP_System:
             event_type=event_type,
             date=date,
             preferences=preferences
-        )    
+        )
+        
     def initiate_event_request(self, request_id):
-        """
-        Delegates submitting a draft.
-        --- THIS METHOD IS UPDATED ---
-        It now takes a request_id instead of all the data.
-        """
+        """Delegates submitting a draft."""
         request = self.find_request_by_id(request_id)
         if not request:
             raise ValueError(f"Request ID {request_id} not found.")
@@ -147,9 +176,7 @@ class SEP_System:
         )
     
     def scs_review_request(self, request_id, is_approved, comments=""):
-        """
-        Delegates the SCS review to the event_workflow module.
-        """
+        """Delegates the SCS review."""
         request = self.find_request_by_id(request_id)
         if not request:
             raise ValueError(f"Request ID {request_id} not found.")
@@ -161,10 +188,9 @@ class SEP_System:
             is_approved=is_approved,
             comments=comments
         )
+
     def fm_review_request(self, request_id, is_approved, comments=""):
-        """
-        Delegates the FM review to the event_workflow module.
-        """
+        """Delegates the FM review."""
         request = self.find_request_by_id(request_id)
         if not request:
             raise ValueError(f"Request ID {request_id} not found.")
@@ -178,9 +204,7 @@ class SEP_System:
         )
 
     def am_decide_request(self, request_id, is_approved, comments=""):
-        """
-        Delegates the AM decision to the event_workflow module.
-        """
+        """Delegates the AM decision."""
         request = self.find_request_by_id(request_id)
         if not request:
             raise ValueError(f"Request ID {request_id} not found.")
