@@ -2,15 +2,9 @@
   {
     "id": 1,
     "created_by": "alice",
-    "amount": "5000",
-    "reason": "Workshop materials",
-    "status": "PENDING"
-  },
-  {
-    "id": 2,
-    "created_by": "alice",
-    "amount": "100",
-    "reason": "training",
-    "status": "PENDING"
+    "amount": "2000",
+    "reason": "Repairs",
+    "status": "APPROVED",
+    "fm_note": "Approved for Q2"
   }
 ]
