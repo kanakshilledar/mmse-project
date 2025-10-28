@@ -80,27 +80,38 @@ def initiate_event_request(system, current_user, request):
 # ... (no change from previous)
 def scs_review(system, current_user, request, is_approved, comments):
     """
-    Workflow: SCS -> FM
-    (This is a stub, you would build out the logic)
+    Use Case: Request Review (SCS)
+    Workflow: SCS -> FM (if approved) or SCS -> CS (if rejected)
     """
+    # 1. Authorization Check
     if not current_user or current_user.role != "SCS":
         raise PermissionError("Only SCS users can review.")
     
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
+    
+    # 2. Add comments (as per use case)
+    if comments:
+        # We log who made the comment
+        comment_entry = f"SCS ({current_user.username}): {comments}"
+        request.comments_log.append(comment_entry)
         
+    # 3. Process Logic
     if is_approved:
         fm_manager = system.find_user_by_role("FM")
+        if not fm_manager:
+            raise EnvironmentError("System Error: No Financial Manager (FM) user found.")
+            
         request.status = "Pending FM Review"
         request.owner = fm_manager
         print(f"Request {request.request_id} approved by SCS, sent to FM.")
     else:
-        # Workflow sends it back to Customer Service
+        # Workflow sends it back to Customer Service (the original creator)
         cs_initiator = request.initiated_by
         request.status = "Rejected by SCS"
         request.owner = cs_initiator
         print(f"Request {request.request_id} rejected by SCS, sent back to CS.")
-
+        
 def fm_review(system, current_user, request, is_approved, comments):
     """
     Workflow: FM -> AM (if approved) or FM -> SCS (if rejected)

@@ -25,9 +25,13 @@ class SEP_System:
     def add_request(self, request):
         request.request_id = len(self.event_requests) + 1
         self.event_requests.append(request)
-        # Also link it to the client
-        request.client.event_history.append(request)
-
+        
+        # --- THIS IS THE FIX ---
+        # A draft might not have a client yet, so we must check
+        if request.client:
+            # Also link it to the client
+            request.client.event_history.append(request)
+        # --- END OF FIX ---
     def find_user(self, username):
         for user in self.users:
             if user.username == username:
@@ -89,21 +93,57 @@ class SEP_System:
             current_user=self.current_user,
             client_name=client_name
         )
+    # --- Workflow Delegate Methods (Event) - UPDATED ---        
+
     # --- Workflow "Delegate" Methods ---
     # These functions call the imported logic
-    
-    def initiate_event_request(self, client_record_number, event_type, date, preferences):
+    def create_draft_request(self):
         """
-        Delegates to the event_workflow.
-        UPDATED: Takes client_record_number.
+        NEW: Delegates creating a blank draft.
         """
-        return event_workflow.initiate_event_request(
+        return event_workflow.create_draft_request(
+            system=self,
+            current_user=self.current_user
+        )
+        
+    def update_draft_request(self, request_id, client_record_number=None, event_type=None, date=None, preferences=None):
+        """
+        NEW: Delegates updating a draft.
+        """
+        request = self.find_request_by_id(request_id)
+        if not request:
+            raise ValueError(f"Request ID {request_id} not found.")
+            
+        # Find the client object if an ID was provided
+        client = None
+        if client_record_number:
+            client = self.find_client_by_record_number(client_record_number)
+            if not client:
+                raise ValueError(f"Client ID {client_record_number} not found.")
+
+        return event_workflow.update_draft_request(
             system=self,
             current_user=self.current_user,
-            client_record_number=client_record_number, # Pass the ID
+            request=request,
+            client=client,
             event_type=event_type,
             date=date,
             preferences=preferences
+        )    
+    def initiate_event_request(self, request_id):
+        """
+        Delegates submitting a draft.
+        --- THIS METHOD IS UPDATED ---
+        It now takes a request_id instead of all the data.
+        """
+        request = self.find_request_by_id(request_id)
+        if not request:
+            raise ValueError(f"Request ID {request_id} not found.")
+
+        return event_workflow.initiate_event_request(
+            system=self,
+            current_user=self.current_user,
+            request=request
         )
     
     def scs_review_request(self, request_id, is_approved, comments=""):

@@ -29,10 +29,9 @@ class Client:
 class EventRequest:
     """
     Represents a single event request.
-    UPDATED: Now supports partial creation and "Draft" status.
+    UPDATED: Added comments_log.
     """
     
-    # --- THIS METHOD IS UPDATED ---
     def __init__(self, initiated_by, client=None, event_type=None, date=None, preferences=None):
         self.request_id = None 
         
@@ -44,9 +43,12 @@ class EventRequest:
         self.initiated_by = initiated_by
         
         # --- State Management ---
-        # A new request starts as a "Draft" owned by the creator
         self.status = "Draft" 
         self.owner = initiated_by 
+        
+        # --- NEW FIELD ---
+        # A list to store all review notes and comments
+        self.comments_log = [] 
         
     def __repr__(self):
         owner_name = self.owner.username if self.owner else "None"

@@ -3,68 +3,153 @@
 
 from system import SEP_System
 from models import User
+
+def test_draft_handling_and_submission():
+    """
+    NEW TEST: Verifies the "Save and Continue" draft logic.
+    """
+    print("\nRunning test: test_draft_handling_and_submission...")
+    
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.login("sarah")
+    client = system.create_client("Test Client")
+    print("PASSED: Setup complete.")
+
+    # 2. CS creates a blank draft
+    draft_request = system.create_draft_request()
+    assert draft_request.request_id == 1
+    assert draft_request.status == "Draft"
+    assert draft_request.owner.username == "sarah"
+    print("PASSED: Blank draft created.")
+    
+    # 3. CS updates the draft with partial info
+    system.update_draft_request(
+        request_id=1,
+        client_record_number=client.record_number
+    )
+    assert draft_request.client.name == "Test Client"
+    assert draft_request.status == "Draft" # Still a draft
+    print("PASSED: Draft partially updated.")
+    
+    # 4. CS tries to submit the incomplete draft
+    try:
+        system.initiate_event_request(request_id=1)
+        assert False, "Test FAILED: Incomplete draft was submitted."
+    except ValueError as e:
+        assert "Cannot submit incomplete draft" in str(e)
+        print("PASSED: Incomplete submission correctly blocked.")
+        
+    # 5. CS finishes filling out the draft
+    system.update_draft_request(
+        request_id=1,
+        event_type="Workshop",
+        date="2025-12-01"
+    )
+    assert draft_request.event_type == "Workshop"
+    print("PASSED: Draft completed.")
+    
+    # 6. CS successfully submits the completed draft
+    system.initiate_event_request(request_id=1)
+    assert draft_request.status == "Pending SCS Review"
+    assert draft_request.owner.username == "janet"
+    print("PASSED: Completed draft submitted successfully.")
+    print("Test finished successfully.")
 def test_full_event_workflow():
     """
-    Test for Use Case: Full Event Workflow
-    CS -> SCS -> FM -> AM -> SCS
+    UPDATED: This test now includes comments.
     """
     print("\nRunning test: test_full_event_workflow...")
 
-    # 1. Setup System and Users
+    # 1. Setup
+    # ... (no change) ...
     system = SEP_System()
-    system.add_user(User(username="sarah", role="CS"))   # Customer Service
-    system.add_user(User(username="janet", role="SCS"))  # Senior Customer Service
-    system.add_user(User(username="alice", role="FM"))   # Financial Manager
-    system.add_user(User(username="mike", role="AM"))    # Administration Manager
-
-    # 2. CS: Log in and create the client
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.add_user(User(username="alice", role="FM"))
+    system.add_user(User(username="mike", role="AM"))
     system.login("sarah")
-    new_client = system.create_client("Test Client for Event")
-    print("PASSED: Client created.")
+    client = system.create_client("Test Client for Event")
 
-    # 3. CS: Initiate the request
-    system.initiate_event_request(
-        client_record_number=new_client.record_number,
+    # 2. CS: Create, Update, and Submit Request
+    # ... (no change) ...
+    draft = system.create_draft_request()
+    system.update_draft_request(
+        request_id=draft.request_id,
+        client_record_number=client.record_number,
         event_type="Workshop",
         date="2025-12-01",
         preferences="Decorations"
     )
-    
-    # 4. Assert: Request is with SCS
-    new_request = system.event_requests[0]
-    assert new_request.status == "Pending SCS Review"
-    assert new_request.owner.username == "janet" 
+    system.initiate_event_request(request_id=draft.request_id)
+    new_request = system.find_request_by_id(draft.request_id)
     print("PASSED: Event initiation (Owner: SCS).")
 
-    # 5. SCS: Log in and approve
+    # 3. SCS: Approve with a comment
     system.login("janet")
-    system.scs_review_request(request_id=1, is_approved=True)
+    # --- THIS IS THE UPDATED PART ---
+    scs_comment = "Looks good. Sending to finance."
+    system.scs_review_request(request_id=1, is_approved=True, comments=scs_comment)
 
-    # 6. Assert: Request is with FM
+    # 4. Assert: Request moved to FM and comment was saved
     assert new_request.status == "Pending FM Review"
     assert new_request.owner.username == "alice"
-    print("PASSED: SCS approval (Owner: FM).")
+    assert len(new_request.comments_log) == 1
+    assert new_request.comments_log[0] == f"SCS (janet): {scs_comment}"
+    print("PASSED: SCS approval (Owner: FM). Comment saved.")
     
-    # 7. FM: Log in and approve
+    # 5. FM: Approve (no change)
     system.login("alice")
     system.fm_review_request(request_id=1, is_approved=True)
-    
-    # 8. Assert: Request is with AM
     assert new_request.status == "Pending AM Review"
     assert new_request.owner.username == "mike"
     print("PASSED: FM approval (Owner: AM).")
     
-    # 9. AM: Log in and approve
+    # 6. AM: Approve (no change)
     system.login("mike")
     system.am_decide_request(request_id=1, is_approved=True)
-    
-    # 10. Assert: Request is back with SCS for finalization
     assert new_request.status == "Approved - Pending Finalization"
     assert new_request.owner.username == "janet"
     print("PASSED: AM approval (Owner: SCS).")
     
     print("Test finished successfully.")
+def test_scs_rejection_workflow():
+    """
+    NEW TEST: Verifies the SCS rejection path (SCS -> CS)
+    """
+    print("\nRunning test: test_scs_rejection_workflow...")
+
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.login("sarah")
+    client = system.create_client("Test Client")
     
+    # 2. CS: Create and submit
+    draft = system.create_draft_request()
+    system.update_draft_request(draft.request_id, client.record_number, "Conference", "2026-01-01")
+    system.initiate_event_request(draft.request_id)
+    
+    request = system.find_request_by_id(draft.request_id)
+    assert request.owner.username == "janet"
+    print("PASSED: Request submitted to SCS.")
+    
+    # 3. SCS: Log in and REJECT
+    system.login("janet")
+    rejection_comment = "Client budget is too low. Please follow up."
+    system.scs_review_request(request_id=1, is_approved=False, comments=rejection_comment)
+    
+    # 4. Assert: Request is back with CS (the original creator)
+    assert request.status == "Rejected by SCS"
+    assert request.owner.username == "sarah" # 'sarah' is the original creator
+    assert len(request.comments_log) == 1
+    assert request.comments_log[0] == f"SCS (janet): {rejection_comment}"
+    print("PASSED: Request rejected and sent back to CS with comments.")
+    print("Test finished successfully.")
+
 def test_client_management_workflow():
     """
     Test for Use Case: Client Record Management
@@ -118,7 +203,9 @@ def test_client_management_workflow():
 
 # --- Run the tests ---
 
+# --- Run the tests ---
 if __name__ == "__main__":
-    # You can now run the full workflow test
-    # test_full_event_workflow()
+    test_draft_handling_and_submission()
+    test_full_event_workflow()
+    test_scs_rejection_workflow() # New test
     test_client_management_workflow()
