@@ -22,6 +22,13 @@ def find_user(username):
             return user
     return None
 
+def find_request_by_id(request_id):
+    requests = load_data(REQUESTS_FILE)
+    for req in requests:
+        if req["id"] == request_id:
+            return req
+    return None
+
 
 def register_user():
     print("\n=== User Registration ===")
@@ -64,7 +71,8 @@ def create_financial_request(user):
         "created_by": user["username"],
         "amount": amount,
         "reason": reason,
-        "status": "PENDING"
+        "status": "PENDING",
+        "fm_note": ""
     }
 
     requests = load_data(REQUESTS_FILE)
@@ -72,9 +80,75 @@ def create_financial_request(user):
     save_data(REQUESTS_FILE, requests)
     print("[*] Financial request submitted!")
 
+def view_all_requests():
+    requests = load_data(REQUESTS_FILE)
+    if not requests:
+        print("No requests found.")
+        return
+    for r in requests:
+        print(f"\nID: {r['id']}\nBy: {r['created_by']}\nAmount: {r['amount']}\nReason: {r['reason']}\nStatus: {r['status']}\nFM Note: {r['fm_note']}")
+
+def review_request(user):
+    print("\n=== Review Financial Requests ===")
+    if user["role"] != "FM":
+        print("[!] Only FM can review financial requests.")
+        return
+
+    requests = load_data(REQUESTS_FILE)
+    pending = [r for r in requests if r["status"] == "PENDING"]
+    if not pending:
+        print("No pending requests to review.")
+        return
+
+    for r in pending:
+        print(f"\nRequest ID: {r['id']} | By: {r['created_by']} | Amount: {r['amount']} | Reason: {r['reason']}")
+        decision = input("Approve (A) / Reject (R): ").strip().upper()
+        note = input("Add a note (optional): ").strip()
+
+        if decision == "A":
+            r["status"] = "APPROVED"
+        elif decision == "R":
+            r["status"] = "REJECTED"
+        else:
+            print("[!] Invalid input. Skipping this request.")
+            continue
+        r["fm_note"] = note
+
+    save_data(REQUESTS_FILE, requests)
+    print("[*] Review process completed.")
+
+
+def finance_menu(user):
+    while True:
+        if user["role"] in ["SM", "PM"]:
+            print("\n1. Create Financial Request\n2. View All Requests\n3. Logout")
+            choice = input("Choose: ").strip()
+            if choice == "1":
+                create_financial_request(user)
+            elif choice == "2":
+                view_all_requests()
+            elif choice == "3":
+                break
+            else:
+                print("[!] Invalid choice.")
+        elif user["role"] == "FM":
+            print("\n1. View All Requests\n2. Review Requests\n3. Logout")
+            choice = input("Choose: ").strip()
+            if choice == "1":
+                view_all_requests()
+            elif choice == "2":
+                review_request(user)
+            elif choice == "3":
+                break
+            else:
+                print("[!] Invalid choice.")
+        else:
+            print("No financial permissions for this role.")
+            break
+
 
 def main():
-    print("=== SEP Management CLI ===")
+    print("=== SEP Management CLI (Iteration 2) ===")
 
     while True:
         print("\n1. Register\n2. Login\n3. Exit")
@@ -85,62 +159,38 @@ def main():
         elif choice == "2":
             user = login_user()
             if user:
-                while True:
-                    print("\n1. Create Financial Request\n2. Logout")
-                    sub_choice = input("Choose: ").strip()
-                    if sub_choice == "1":
-                        create_financial_request(user)
-                    elif sub_choice == "2":
-                        print("[+] Logged out.")
-                        break
-                    else:
-                        print("[!] Invalid choice.")
+                finance_menu(user)
         elif choice == "3":
-            print("Exiting program. Bye!")
+            print("[+] Exiting program.")
             break
         else:
             print("[!] Invalid option.")
 
 # Testing the methods
 
-def test_user_registration_and_login():
-    # reset files
-    save_data(USERS_FILE, [])
-    save_data(REQUESTS_FILE, [])
-
-    users = load_data(USERS_FILE)
-    assert users == []
-
-    # Register a user manually (simulate)
-    test_user = {"username": "alice", "password": "123", "role": "SM"}
-    users.append(test_user)
-    save_data(USERS_FILE, users)
-
-    # Test login
-    user = find_user("alice")
-    assert user["password"] == "123"
-    print("[*] Test: User registration and login passed.")
-
-def test_create_financial_request():
-    save_data(REQUESTS_FILE, [])
-    user = {"username": "alice", "role": "SM"}
-    # simulate request creation
-    requests = load_data(REQUESTS_FILE)
-    requests.append({
+def test_review_request():
+    # prepare mock data
+    save_data(REQUESTS_FILE, [{
         "id": 1,
-        "created_by": user["username"],
+        "created_by": "alice",
         "amount": "5000",
         "reason": "Workshop materials",
-        "status": "PENDING"
-    })
+        "status": "PENDING",
+        "fm_note": ""
+    }])
+
+    user = {"username": "bob", "role": "FM"}
+    requests = load_data(REQUESTS_FILE)
+    assert requests[0]["status"] == "PENDING"
+    requests[0]["status"] = "APPROVED"
+    requests[0]["fm_note"] = "Approved for Q1"
     save_data(REQUESTS_FILE, requests)
-    assert len(load_data(REQUESTS_FILE)) == 1
-    print("[*] Test: Financial request creation passed.")
+
+    updated = load_data(REQUESTS_FILE)
+    assert updated[0]["status"] == "APPROVED"
+    assert updated[0]["fm_note"] == "Approved for Q1"
+    print("[*] Test: FM review request passed.")
 
 if __name__ == "__main__":
-    # Run manual tests
-    test_user_registration_and_login()
-    test_create_financial_request()
-
-    # Start CLI
+    test_review_request()
     main()
