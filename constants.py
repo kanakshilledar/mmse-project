@@ -4,10 +4,9 @@ Shared constants for the SEP Internal System.
 """
 
 # File names
-STAFF_REQ_FILE = "staff_requests.txt"
-EMPLOYEES_FILE = "employees.txt"
-TASKS_FILE = "tasks.txt"
-SUBTEAMS_FILE = "subteams.txt"
+STAFF_REQ_FILE = "staff_requests.json"
+EMPLOYEES_FILE = "employees.json"
+TASKS_FILE = "tasks.json"
 
 # Departments
 DEPARTMENTS = ["Production", "Services", "Administration", "Financial"]

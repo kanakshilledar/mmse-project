@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "department": "Production",
+    "role_required": "Engineer",
+    "reason": "Dun have",
+    "requested_by": "Mikael",
+    "status": "rejected",
+    "hr_comments": "No go"
+  },
+  {
+    "id": 2,
+    "department": "Services",
+    "role_required": "Chef",
+    "reason": "Less chefs",
+    "requested_by": "Bob",
+    "status": "pending",
+    "hr_comments": ""
+  }
+]
