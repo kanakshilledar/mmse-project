@@ -1,6 +1,6 @@
 """
 constants.py
-Shared constants for the SEP Internal System.
+Constants for the SEP Internal System.
 """
 
 # File names
