@@ -1,0 +1,8 @@
+1|Tobias|subteam|Filming
+2|Anna|subteam|Decoration
+3|Jonas|subteam|Sound
+4|Maria|subteam|Catering
+5|Mikael|manager|
+6|Sara|hr|
+7|AdminUser|admin|
+8|Bob|manager|
