@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "created_by": "alice",
+    "amount": "2000",
+    "reason": "Repairs",
+    "status": "APPROVED",
+    "fm_note": "Approved for Q2"
+  }
+]
