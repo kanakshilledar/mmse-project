@@ -3,14 +3,14 @@ from users import register_user, login_user
 from finance import finance_menu
 
 from constants import STAFF_REQ_FILE, EMPLOYEES_FILE, TASKS_FILE
-from sep_cli import menu_hr, menu_manager, menu_subteam
-
+from sep_cli import menu_hr, menu_manager, menu_subteam,cs_menu
+from system import SEP_System
 def main():
     print("=== SEP Management CLI ===")
     ensure_file(USERS_FILE)
     ensure_file(REQUESTS_FILE)
     ensure_files([STAFF_REQ_FILE, EMPLOYEES_FILE, TASKS_FILE])
-
+    system = SEP_System()
     while True:
         print("\n1. Register\n2. Login\n3. Exit")
         choice = input("Choose an option: ").strip()
@@ -18,7 +18,7 @@ def main():
             register_user()
         elif choice == "2":
             user = login_user()  
-            role = user["role"]  
+            role = user["role"] 
             if user:
                 if role == "FM":
                     print("Finance menu selected.")
@@ -32,6 +32,9 @@ def main():
                 elif role in ["LEAD", "MEMBER"]:
                     print("Staff menu selected.")
                     menu_subteam(user)  # Call the function for staff
+                elif role in ["CS","SCS"]:
+                    print("Customer service menu selected.")
+                    cs_menu(system,user)
                 else:
                     print("Unknown role!")
 

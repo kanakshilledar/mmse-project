@@ -17,7 +17,7 @@ def search_client_by_name(system, current_user, client_name):
     # Was: current_user.role
     if not current_user or current_user['role'] not in allowed_roles:
         raise PermissionError("You do not have permission to search client records.")
-        
+    
     # 2. Logic
     return system.find_client_by_name(client_name)
 

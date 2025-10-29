@@ -8,7 +8,11 @@ from task_manager import (list_subteams, list_employees, add_task, print_task_de
                           list_tasks_for_user, update_task_plan, change_task_status)
 from hr_manager import submit_staff_request, list_staff_requests, review_request
 from users import change_password
-
+import event_workflow,client_workflow
+import customer_service
+import clients
+import event_requests
+import cs_manager
 # Role based menus
 def menu_manager(user):
     while True:
@@ -131,3 +135,80 @@ def menu_hr(user):
                 break
         except Exception as e:
             print("Error:", e)
+
+
+def cs_menu(system,user):
+    """
+    Main menu loop for Customer Service users.
+    """
+    print(f"\n--- Welcome, {user['username']} (Customer Service) ---")
+    
+    while True:
+        print("\nCustomer Service Menu:")
+        print("1. Create New Client")
+        print("2. Search for Client")
+        print("3. Create New Event Draft")
+        print("4. View & Update My Drafts")
+        print("5. Submit Draft for Review")
+        print("0. Logout")
+        
+        choice = input("Enter your choice: ").strip()
+        
+        try:
+            if choice == '1':
+                # --- Create Client ---
+                client_name = customer_service._get_input("Enter new client's name")
+                if client_name:
+                    clients.create_client(client_name)
+                
+            elif choice == '2':
+                # --- Search Client ---
+                client_name = customer_service._get_input("Enter client's name to search")
+                if client_name:
+                    client = clients.find_client_by_name(client_name)
+                    if client:
+                        print("\n--- Client Found ---")
+                        print(f"  Name: {client['name']}")
+                        print(f"  ID: {client['record_number']}")
+                        print(f"  Event History IDs: {client['event_history_ids']}")
+                    else:
+                        print("No client found with that name.")
+            
+            elif choice == '3':
+                # --- Create Draft ---
+                cs_manager._handle_create_request(system, user)
+                print("New blank draft created.")
+                
+            # elif choice == '4':
+            #     # --- Update Draft ---
+            #     customer_service._update_draft(system, user)
+                
+            # elif choice == '5':
+            #     # --- Submit Draft ---
+            #     customer_service._view_my_drafts(system, user)
+            #     req_id_str = customer_service._get_input("Enter the ID of the draft you want to SUBMIT (or leave blank to cancel)")
+            #     if req_id_str:
+            #         request_id = int(req_id_str)
+            #         request = system.find_request_by_id(request_id)
+                    
+            #         if (not request or 
+            #             request.status != "Draft" or 
+            #             request.owner['username'] != user['username']):
+            #             print("Error: Request not found or you are not the owner of this draft.")
+            #         else:
+            #             event_requests.initiate_event_request(system, user, request)
+            #             print(f"Draft {request_id} submitted for review!")
+                
+            elif choice == '0':
+                # --- Logout ---
+                print(f"Logging out {user['username']}...")
+                break
+                
+            else:
+                print("Invalid choice, please try again.")
+        
+        except (ValueError, PermissionError) as e:
+            print(f"\nError: {e}\n")
+        except Exception as e:
+            # Catch unexpected errors
+            print(f"\nAn unexpected error occurred: {e}\n")
