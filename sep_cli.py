@@ -3,38 +3,9 @@ sep_cli.py
 JSON-based CLI for SEP Internal System
 """
 
-from task_manager import list_subteams, list_employees, add_task, list_tasks_for_user, update_task_plan, change_task_status
+from task_manager import (list_subteams, list_employees, add_task, print_task_details,
+                          list_tasks_for_user, update_task_plan, change_task_status)
 from hr_manager import submit_staff_request, list_staff_requests, review_request
-import storage as s
-from constants import STAFF_REQ_FILE, EMPLOYEES_FILE, TASKS_FILE
-
-# Helper
-def print_task_details(task):
-    print(f"\n[{task['id']}] {task['title']}")
-    print(f"  Event ID: {task['event_id']}")
-    print(f"  Assigned Team: {task['assigned_team']}")
-    print(f"  Status: {task['status']}")
-    if task.get("plan"):
-        print(f"  Plan: {task['plan']}")
-    if task.get("resources"):
-        print(f"  Resources: {task['resources']}")
-    if task.get("budget_request"):
-        print(f"  Budget: {task['budget_request']}")
-    if task.get("comments"):
-        print(f"  Comments: {task['comments']}")
-
-
-def login():
-    employees = list_employees()
-    name = input("Enter your name: ").strip()
-    password = input("Enter your password: ").strip().lower()
-    match = next((e for e in employees if e["name"].lower() == name.lower() and password in e["password"].lower()), None)
-    if not match:
-        print("Invalid credentials or role mismatch.")
-        return None, None
-    print(f"Welcome, {name} ({match.get('role', 'N/A')}) — Subteam: {match.get('subteam', 'N/A')}")
-    return name, match.get('role', 'N/A')
-
 
 # Role based menus
 def menu_manager(user):
@@ -49,7 +20,7 @@ def menu_manager(user):
         c = input("Choice: ").strip()
         try:
             if c == "1":
-                tasks = list_tasks_for_user(user, "PM")
+                tasks = list_tasks_for_user(user["username"], "PM")
                 if not tasks:
                     print("No tasks available.")
                 else:
@@ -73,7 +44,7 @@ def menu_manager(user):
                 dept = input("Department: ")
                 role_req = input("Role required: ")
                 reason = input("Reason: ")
-                submit_staff_request(dept, role_req, reason, user)
+                submit_staff_request(dept, role_req, reason, user["username"])
                 print("Staff request submitted.")
             elif c == "5":
                 for r in list_staff_requests():
@@ -95,7 +66,7 @@ def menu_subteam(user):
         c = input("Choice: ").strip()
         try:
             if c == "1":
-                tasks = list_tasks_for_user(user, "LEAD")
+                tasks = list_tasks_for_user(user["username"], "LEAD")
                 if not tasks:
                     print("No tasks assigned to your team.")
                 else:
@@ -124,6 +95,7 @@ def menu_hr(user):
         print("\n=== HR MENU ===")
         print("1) View Staff Requests")
         print("2) Review Request")
+        print("3) List employees")
         print("0) Logout")
         c = input("Choice: ").strip()
         try:
@@ -136,26 +108,9 @@ def menu_hr(user):
                 comment = input("HR Comment: ")
                 review_request(rid, approve, comment)
                 print("Request reviewed.")
+            elif c == "3":
+                print(list_employees())
             elif c == "0":
                 break
         except Exception as e:
             print("Error:", e)
-
-
-def main():
-    s.ensure_files([STAFF_REQ_FILE, EMPLOYEES_FILE, TASKS_FILE])
-    user, role = login()
-    if not user:
-        return
-    if role in ["FM", "PM"]:
-        menu_manager(user)
-    elif role in ["LEAD", "MEMBER"]:
-        menu_subteam(user)
-    elif role == "HR":
-        menu_hr(user)
-    else:
-        print("No menu defined for this role.")
-
-
-if __name__ == "__main__":
-    main()

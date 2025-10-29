@@ -1,7 +1,64 @@
 [
   {
+    "id": 1,
     "username": "bob",
     "password": "abc",
-    "role": "FM"
+    "role": "FM",
+    "subteam": "N/A"
+  },
+  {
+    "id": 2,
+    "username": "Temp",
+    "password": "qwert",
+    "role": "LEAD",
+    "subteam": "Test"
+  },
+  {
+    "id": 3,
+    "username": "Jonas",
+    "role": "LEAD",
+    "subteam": "Sound",
+    "password": "abc"
+  },
+  {
+    "id": 4,
+    "username": "Maria",
+    "role": "LEAD",
+    "subteam": "Catering",
+    "password": "abc"
+  },
+  {
+    "id": 5,
+    "username": "Mikael",
+    "role": "PM",
+    "subteam": "N/A",
+    "password": "abc"
+  },
+  {
+    "id": 6,
+    "username": "Sara",
+    "role": "HR",
+    "subteam": "N/A",
+    "password": "abc"
+  },
+  {
+    "id": 7,
+    "username": "AdminUser",
+    "role": "ADMIN",
+    "subteam": "N/A",
+    "password": "abc"
+  },
+  {
+    "id": 8,
+    "username": "Bob",
+    "role": "SM",
+    "subteam": "N/A",
+    "password": "abc"
+  },
+  {
+    "id": 4,
+    "username": "Maria",
+    "role": "MEMBER",
+    "subteam": "Catering"
   }
 ]

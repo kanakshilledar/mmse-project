@@ -14,9 +14,15 @@ def register_user():
         print("Username already exists.")
         return
     password = input("Enter password: ").strip()
-    role = input("Enter role (SM/PM/FM/HR/SCS): ").strip().upper()
-    user = {"username": username, "password": password, "role": role}
+    role = input("Enter role (SM/PM/FM/HR/SCS/LEAD/MEMBER): ").strip().upper()
+    if role in ["LEAD", "MEMBER"]:
+        subteam = input(f"Enter subteam {username} is part of: ").strip()
+    else:
+        subteam = "N/A"
     users = load_data(USERS_FILE)
+    user = {"id": len(users) + 1, "username": username, "password": password, 
+            "role": role, "subteam": subteam}
+    
     users.append(user)
     save_data(USERS_FILE, users)
     print("Registration successful.")

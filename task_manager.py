@@ -27,16 +27,16 @@ def validate_subteam(name):
 def list_employees():
     return load_data(EMPLOYEES_FILE)
 
-def add_employee(name, role, subteam=""):
-    if not name or not role:
+def add_employee(username, role, subteam=""):
+    if not username or not role:
         raise ValueError("Employee name and role required.")
 
     emps = load_data(EMPLOYEES_FILE)
-    if any(name.lower() == e["name"].lower() for e in emps):
-        raise ValueError(f"Employee '{name}' already exists.")
+    if any(username.lower() == e["username"].lower() for e in emps):
+        raise ValueError(f"Employee '{username}' already exists.")
 
     eid = len(emps) + 1
-    emps.append({"id": eid, "name": name, "role": role, "subteam": subteam})
+    emps.append({"id": eid, "username": username, "role": role, "subteam": subteam})
     save_data(EMPLOYEES_FILE, emps)
     return eid
 
@@ -112,7 +112,7 @@ def change_task_status(task_id, status):
 def list_tasks_for_user(user_name, role):
     all_tasks = list_tasks()
     employees = list_employees()
-    user = next((e for e in employees if e["name"].lower() == user_name.lower()), None)
+    user = next((e for e in employees if e["username"].lower() == user_name.lower()), None)
     if not user:
         return []
 
@@ -122,3 +122,18 @@ def list_tasks_for_user(user_name, role):
         team = user.get("subteam", "")
         return [t for t in all_tasks if t["assigned_team"].lower() == team.lower()]
     return []
+
+# Helper
+def print_task_details(task):
+    print(f"\n[{task['id']}] {task['title']}")
+    print(f"  Event ID: {task['event_id']}")
+    print(f"  Assigned Team: {task['assigned_team']}")
+    print(f"  Status: {task['status']}")
+    if task.get("plan"):
+        print(f"  Plan: {task['plan']}")
+    if task.get("resources"):
+        print(f"  Resources: {task['resources']}")
+    if task.get("budget_request"):
+        print(f"  Budget: {task['budget_request']}")
+    if task.get("comments"):
+        print(f"  Comments: {task['comments']}")

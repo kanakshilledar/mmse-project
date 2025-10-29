@@ -5,7 +5,7 @@ Shared constants for the SEP Internal System.
 
 # File names
 STAFF_REQ_FILE = "staff_requests.json"
-EMPLOYEES_FILE = "employees.json"
+EMPLOYEES_FILE = "users.json"
 TASKS_FILE = "tasks.json"
 
 # Departments
