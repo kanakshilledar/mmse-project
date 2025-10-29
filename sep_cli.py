@@ -6,6 +6,7 @@ JSON-based CLI for SEP Internal System
 from task_manager import (list_subteams, list_employees, add_task, print_task_details,
                           list_tasks_for_user, update_task_plan, change_task_status)
 from hr_manager import submit_staff_request, list_staff_requests, review_request
+from users import change_password
 
 # Role based menus
 def menu_manager(user):
@@ -16,6 +17,7 @@ def menu_manager(user):
         print("3) Change Task Status")
         print("4) Submit Staff Request")
         print("5) View My Staff Requests")
+        print("6) Change Password")
         print("0) Logout")
         c = input("Choice: ").strip()
         try:
@@ -50,6 +52,8 @@ def menu_manager(user):
                 for r in list_staff_requests():
                     if r['requested_by'] == user:
                         print(f"[{r['id']}] {r['department']} -> {r['role_required']} ({r['status']})")
+            elif c == "6":
+                change_password(user)
             elif c == "0":
                 break
         except Exception as e:
@@ -62,6 +66,7 @@ def menu_subteam(user):
         print("1) View My Team’s Tasks")
         print("2) Update Task Plan")
         print("3) Mark Task Complete")
+        print("4) Change Password")
         print("0) Logout")
         c = input("Choice: ").strip()
         try:
@@ -84,6 +89,8 @@ def menu_subteam(user):
                 tid = input("Task ID: ")
                 change_task_status(tid, "completed")
                 print("Task marked complete.")
+            elif c == "4":
+                change_password(user)
             elif c == "0":
                 break
         except Exception as e:
@@ -96,6 +103,7 @@ def menu_hr(user):
         print("1) View Staff Requests")
         print("2) Review Request")
         print("3) List employees")
+        print("4) Change Password")
         print("0) Logout")
         c = input("Choice: ").strip()
         try:
@@ -110,6 +118,8 @@ def menu_hr(user):
                 print("Request reviewed.")
             elif c == "3":
                 print(list_employees())
+            elif c == "4":
+                change_password(user)
             elif c == "0":
                 break
         except Exception as e:
