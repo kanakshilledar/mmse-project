@@ -1,9 +1,11 @@
+# models.py
+# REFACTORED:
+# 1. Added `client_expected_budget` and `fm_estimated_cost` to EventRequest.
+
 import datetime
 
 class User:
-    """
-    A simple class to hold user data.
-    """
+    """Represents any user in the system."""
     def __init__(self, username, role):
         self.username = username
         self.role = role # e.g., "CS", "SCS", "FM", "AM"
@@ -11,67 +13,59 @@ class User:
     def __repr__(self):
         return f"User(username='{self.username}', role='{self.role}')"
 
-class Comment:
-    """
-    NEW: A structured class to hold comment data.
-    This replaces the simple string in EventRequest.comments_log.
-    """
-    def __init__(self, user, message):
-        self.user = user # The User object who made the comment
-        self.message = message
-        self.timestamp = datetime.datetime.now()
-
-    def __repr__(self):
-        # A short representation for debugging
-        return f"Comment(user='{self.user.username}', time='{self.timestamp.strftime('%Y-%m-%d')}')"
-
 class Client:
-    """
-    Represents a client record.
-    """
+    """Represents a client record."""
     def __init__(self, name):
-        self.record_number = None # Will be set by the system
+        self.record_number = None
         self.name = name
-        
-        # REFACTORED: This now stores request IDs, not objects.
-        # This prevents a circular dependency.
-        self.event_history_ids = [] # This will be a List[int]
+        self.event_history_ids = [] # Stores EventRequest IDs
         
     def __repr__(self):
         return f"Client(id={self.record_number}, name='{self.name}')"
+
+class Comment:
+    """Represents a single comment in the log."""
+    def __init__(self, user, message):
+        self.user = user
+        self.message = message
+        self.timestamp = datetime.datetime.now()
+        
+    def __repr__(self):
+        return f"Comment(user='{self.user.username}', msg='{self.message[:20]}...')"
 
 class EventRequest:
     """
     Represents a single event request.
     """
     
-    def __init__(self, initiated_by, client=None, event_type=None, date=None, preferences=None):
-        self.request_id = None # Will be set by the system (int)
+    def __init__(self, initiated_by, client=None, event_type=None, date=None, preferences=None, client_expected_budget=None):
+        self.request_id = None 
         
         # --- Data fields ---
-        self.client = client # Client object
+        self.client = client
         self.event_type = event_type
         self.date = date
         self.preferences = preferences
-        self.initiated_by = initiated_by # User object
+        self.initiated_by = initiated_by
+        
+        # --- NEW BUDGET FIELDS ---
+        self.client_expected_budget = client_expected_budget
+        self.fm_estimated_cost = None
         
         # --- State Management ---
         self.status = "Draft" 
-        self.owner = initiated_by # User object
+        self.owner = initiated_by 
         
-        # REFACTORED: This is now a list of structured Comment objects.
-        self.comments_log = [] # This will be a List[Comment]
+        # --- Log ---
+        self.comments_log = [] # A list of Comment objects
+        
+    def add_comment(self, user, message):
+        """Helper to add a structured comment."""
+        if message:
+            comment = Comment(user=user, message=message)
+            self.comments_log.append(comment)
         
     def __repr__(self):
         owner_name = self.owner.username if self.owner else "None"
-        client_name = self.client.name if self.client else "N/A"
-        return f"EventRequest(id={self.request_id}, client='{client_name}', status='{self.status}')"
+        return f"EventRequest(id={self.request_id}, client='{self.client.name if self.client else 'N/A'}', status='{self.status}')"
 
-    def add_comment(self, user, message):
-        """
-        NEW: A helper method to add a structured comment.
-        """
-        if not message: # Don't add empty comments
-            return
-        comment = Comment(user=user, message=message)
-        self.comments_log.append(comment)

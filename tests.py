@@ -1,8 +1,8 @@
 # tests.py
-# Contains all test cases for the model logic.
 # REFACTORED:
-# 1. Updated assertions to work with the new Comment object
-#    in EventRequest.comments_log.
+# 1. Tests updated to pass `client_expected_budget` during draft updates.
+# 2. `test_full_event_workflow` now passes `estimated_cost`
+#    during FM review and asserts it was saved.
 
 from system import SEP_System
 from models import User
@@ -34,7 +34,7 @@ def test_draft_handling_and_submission():
         client_record_number=client.record_number
     )
     assert draft_request.client.name == "Test Client"
-    assert draft_request.status == "Draft" # Still a draft
+    assert draft_request.status == "Draft"
     print("PASSED: Draft partially updated.")
     
     # 4. CS tries to submit the incomplete draft
@@ -45,13 +45,15 @@ def test_draft_handling_and_submission():
         assert "Cannot submit incomplete draft" in str(e)
         print("PASSED: Incomplete submission correctly blocked.")
         
-    # 5. CS finishes filling out the draft
+    # 5. CS finishes filling out the draft (with new budget field)
     system.update_draft_request(
         request_id=1,
         event_type="Workshop",
-        date="2025-12-01"
+        date="2025-12-01",
+        client_expected_budget=50000
     )
     assert draft_request.event_type == "Workshop"
+    assert draft_request.client_expected_budget == 50000
     print("PASSED: Draft completed.")
     
     # 6. CS successfully submits the completed draft
@@ -64,7 +66,7 @@ def test_draft_handling_and_submission():
 
 def test_full_event_workflow():
     """
-    UPDATED: Assertions for comments now check the Comment object.
+    Tests the full approval workflow: CS -> SCS -> FM -> AM -> SCS
     """
     print("\nRunning test: test_full_event_workflow...")
 
@@ -84,7 +86,8 @@ def test_full_event_workflow():
         client_record_number=client.record_number,
         event_type="Workshop",
         date="2025-12-01",
-        preferences="Decorations"
+        preferences="Decorations",
+        client_expected_budget=100000 # NEW
     )
     system.initiate_event_request(request_id=draft.request_id)
     new_request = system.find_request_by_id(draft.request_id)
@@ -98,25 +101,27 @@ def test_full_event_workflow():
     # 4. Assert: Request moved to FM and comment was saved
     assert new_request.status == "Pending FM Review"
     assert new_request.owner.username == "alice"
-    
-    # --- THIS IS THE FIX ---
     assert len(new_request.comments_log) == 1
     assert new_request.comments_log[0].user.username == "janet"
     assert new_request.comments_log[0].message == scs_comment
-    # --- END OF FIX ---
-    
     print("PASSED: SCS approval (Owner: FM). Comment saved.")
     
-    # 5. FM: Approve
+    # 5. FM: Approve (with new estimated cost)
     system.login("alice")
-    system.fm_review_request(request_id=1, is_approved=True, comments="Budget approved.")
+    system.fm_review_request(
+        request_id=1, 
+        is_approved=True, 
+        comments="Budget approved.",
+        estimated_cost=95000 # NEW
+    )
     
     # 6. Assert: Request is with AM
     assert new_request.status == "Pending AM Review"
     assert new_request.owner.username == "mike"
-    assert len(new_request.comments_log) == 2 # Check new comment
+    assert len(new_request.comments_log) == 2
     assert new_request.comments_log[1].user.username == "alice"
-    print("PASSED: FM approval (Owner: AM).")
+    assert new_request.fm_estimated_cost == 95000 # NEW ASSERTION
+    print("PASSED: FM approval (Owner: AM). Cost saved.")
     
     # 7. AM: Approve
     system.login("mike")
@@ -125,7 +130,7 @@ def test_full_event_workflow():
     # 8. Assert: Request is back with SCS
     assert new_request.status == "Approved - Pending Finalization"
     assert new_request.owner.username == "janet"
-    assert len(new_request.comments_log) == 3 # Check final comment
+    assert len(new_request.comments_log) == 3
     assert new_request.comments_log[2].user.username == "mike"
     print("PASSED: AM approval (Owner: SCS).")
     
@@ -134,7 +139,7 @@ def test_full_event_workflow():
 
 def test_scs_rejection_workflow():
     """
-    NEW TEST: Verifies the SCS rejection path (SCS -> CS)
+    UPDATED: Verifies the SCS rejection path (SCS -> Closed)
     """
     print("\nRunning test: test_scs_rejection_workflow...")
 
@@ -147,7 +152,13 @@ def test_scs_rejection_workflow():
     
     # 2. CS: Create and submit
     draft = system.create_draft_request()
-    system.update_draft_request(draft.request_id, client.record_number, "Conference", "2026-01-01")
+    system.update_draft_request(
+        draft.request_id, 
+        client.record_number, 
+        "Conference", 
+        "2026-01-01",
+        client_expected_budget=1000 # NEW
+    )
     system.initiate_event_request(draft.request_id)
     
     request = system.find_request_by_id(draft.request_id)
@@ -156,20 +167,18 @@ def test_scs_rejection_workflow():
     
     # 3. SCS: Log in and REJECT
     system.login("janet")
-    rejection_comment = "Client budget is too low. Please follow up."
+    rejection_comment = "Client budget is too low. Marked as closed."
     system.scs_review_request(request_id=1, is_approved=False, comments=rejection_comment)
     
-    # 4. Assert: Request is back with CS (the original creator)
-    assert request.status == "Rejected by SCS"
-    assert request.owner.username == "sarah" # 'sarah' is the original creator
+    # 4. Assert: Request is marked as closed and owned by SCS
+    assert request.status == "Closed - Rejected"
+    assert request.owner.username == "janet"
     
-    # --- THIS IS THE FIX ---
     assert len(request.comments_log) == 1
     assert request.comments_log[0].user.username == "janet"
     assert request.comments_log[0].message == rejection_comment
-    # --- END OF FIX ---
+    print("PASSED: Request rejected and marked as closed.")
     
-    print("PASSED: Request rejected and sent back to CS with comments.")
     print("Test finished successfully.")
 
 
@@ -193,12 +202,7 @@ def test_client_management_workflow():
     # 3. Test: Create a new client
     new_client = system.create_client("College of Music")
     assert new_client is not None
-    
-    # --- THIS IS THE FIX ---
-    # Your system.py assigns a string "c1", not an integer 1
     assert new_client.record_number == "c1"
-    # --- END OF FIX ---
-    
     assert len(system.clients) == 1
     print("PASSED: Client creation successful.")
     
