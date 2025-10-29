@@ -1,8 +1,9 @@
 """
 sep_cli.py
-JSON-based CLI for SEP Internal System
+CLI for SEP
 """
 
+from finance import create_financial_request, view_my_requests
 from task_manager import (list_subteams, list_employees, add_task, print_task_details,
                           list_tasks_for_user, update_task_plan, change_task_status)
 from hr_manager import submit_staff_request, list_staff_requests, review_request
@@ -17,7 +18,9 @@ def menu_manager(user):
         print("3) Change Task Status")
         print("4) Submit Staff Request")
         print("5) View My Staff Requests")
-        print("6) Change Password")
+        print("6) Create Financial Request")
+        print("7) View My Financial Requests")
+        print("8) Change Password")
         print("0) Logout")
         c = input("Choice: ").strip()
         try:
@@ -53,6 +56,10 @@ def menu_manager(user):
                     if r['requested_by'] == user:
                         print(f"[{r['id']}] {r['department']} -> {r['role_required']} ({r['status']})")
             elif c == "6":
+                create_financial_request(user)
+            elif c == "7":
+                view_my_requests(user)
+            elif c == "8":
                 change_password(user)
             elif c == "0":
                 break

@@ -1,4 +1,0 @@
-1|E101|Film Opening Ceremony|Filming|in_progress|Do something||100|"none"
-2|E102|Decorate Main Hall|Decoration|pending|Initial plan prepared|Paint, fabrics|200|Waiting for supplier
-3|E103|Sound Check and Setup|Sound|completed|Microphone testing and speaker alignment|Mixers, cables|150|All done
-4|E104|Prepare Catering Area|Catering|pending|||0|

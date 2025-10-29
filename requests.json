@@ -1,10 +1,18 @@
 [
   {
     "id": 1,
-    "created_by": "alice",
+    "created_by": "Mikael",
     "amount": "2000",
     "reason": "Repairs",
     "status": "APPROVED",
     "fm_note": "Approved for Q2"
+  },
+  {
+    "id": 2,
+    "created_by": "Mikael",
+    "amount": "1999",
+    "reason": "test",
+    "status": "PENDING",
+    "fm_note": ""
   }
 ]
