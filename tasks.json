@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "event_id": "E001",
+    "title": "Book Cameras",
+    "assigned_team": "Filming",
+    "status": "pending",
+    "plan": "",
+    "resources": "",
+    "budget_request": 100,
+    "comments": "Initial booking"
+  },
+  {
+    "id": 2,
+    "event_id": "E002",
+    "title": "Decorate Hall",
+    "assigned_team": "Decoration",
+    "status": "pending",
+    "plan": "",
+    "resources": "",
+    "budget_request": 250,
+    "comments": "Use flowers and lights"
+  },
+  {
+    "id": 3,
+    "event_id": "E003",
+    "title": "Sound Check",
+    "assigned_team": "Sound",
+    "status": "completed",
+    "plan": "",
+    "resources": "",
+    "budget_request": 0,
+    "comments": "All good"
+  }
+]

@@ -1,0 +1,64 @@
+[
+    {
+        "id": 1,
+        "name": "Tobias",
+        "role": "LEAD",
+        "subteam": "Filming",
+        "password": "abc"
+    },
+    {
+        "id": 2,
+        "name": "Anna",
+        "role": "LEAD",
+        "subteam": "Decoration",
+        "password": "abc"
+    },
+    {
+        "id": 3,
+        "name": "Jonas",
+        "role": "LEAD",
+        "subteam": "Sound",
+        "password": "abc"
+    },
+    {
+        "id": 4,
+        "name": "Maria",
+        "role": "LEAD",
+        "subteam": "Catering",
+        "password": "abc"
+    },
+    {
+        "id": 5,
+        "name": "Mikael",
+        "role": "PM",
+        "subteam": "",
+        "password": "abc"
+    },
+    {
+        "id": 6,
+        "name": "Sara",
+        "role": "HR",
+        "subteam": "",
+        "password": "abc"
+    },
+    {
+        "id": 7,
+        "name": "AdminUser",
+        "role": "ADMIN",
+        "subteam": "",
+        "password": "abc"
+    },
+    {
+        "id": 8,
+        "name": "Bob",
+        "role": "SM",
+        "subteam": "",
+        "password": "abc"
+    },
+    {
+        "id": 4,
+        "name": "Maria",
+        "role": "MEMBER",
+        "subteam": "Catering"
+    }
+]
