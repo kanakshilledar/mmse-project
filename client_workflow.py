@@ -1,29 +1,29 @@
-# client_workflow.py
-# NEW FILE: Contains all logic for client management.
-
 import models
+from auth import requires_role # <-- Import the decorator
 
+@requires_role(
+    allowed_roles=["CS", "SCS", "FM", "AM", "Marketing"], 
+    error_message="You do not have permission to search client records."
+)
 def search_client_by_name(system, current_user, client_name):
     """
     Use Case: Search for existing client.
-    Checks authorization for searching.
+    Authorization is handled by the decorator.
     """
-    # Authorization: Many roles can search
-    allowed_roles = ["CS", "SCS", "FM", "AM", "Marketing"] 
-    if current_user.role not in allowed_roles:
-        raise PermissionError("You do not have permission to search client records.")
-        
+    # Authorization logic is removed!
     return system.find_client_by_name(client_name)
 
+@requires_role(
+    allowed_roles=["CS", "SCS"], 
+    error_message="Only Customer Service officers can create new clients."
+)
 def create_client(system, current_user, client_name):
     """
     Use Case: Create new client profile.
     Prevents duplication.
+    Authorization is handled by the decorator.
     """
-    # Authorization: Based on the slide and prompt.
-    allowed_roles = ["CS", "SCS"]
-    if current_user.role not in allowed_roles:
-        raise PermissionError("Only Customer Service officers can create new clients.")
+    # Authorization logic is removed!
 
     # 1. Prevent Duplication (as per use case)
     existing_client = system.find_client_by_name(client_name)

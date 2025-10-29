@@ -6,6 +6,8 @@
 import models
 import datetime
 
+from auth import requires_role # <-- Import our decorator
+
 def _find_user_or_raise(system, role):
     """Helper to find a user or raise an error."""
     user = system.find_user_by_role(role)
@@ -13,25 +15,24 @@ def _find_user_or_raise(system, role):
         raise EnvironmentError(f"System Error: No user found for role '{role}'.")
     return user
 
+@requires_role(allowed_roles="CS", error_message="Only Customer Service (CS) users can create drafts.")
 def create_draft_request(system, current_user):
     """
     Creates a new, blank draft request.
     """
-    if not current_user or current_user.role != "CS":
-        raise PermissionError("Only Customer Service (CS) users can create drafts.")
-
+    # Role check is handled by decorator!
     new_request = models.EventRequest(initiated_by=current_user)
     system.add_request(new_request)
     
     print(f"New draft request (ID: {new_request.request_id}) created by '{current_user.username}'.")
     return new_request
 
+@requires_role(allowed_roles="CS", error_message="Only Customer Service (CS) users can update drafts.")
 def update_draft_request(system, current_user, request, client=None, event_type=None, date=None, preferences=None, client_expected_budget=None):
     """
     Updates fields on an existing draft request.
     """
-    if not current_user or current_user.role != "CS":
-        raise PermissionError("Only Customer Service (CS) users can update drafts.")
+    # Role check is handled by decorator!
         
     if request.owner != current_user or request.status != "Draft":
         raise PermissionError("You cannot edit this request.")
@@ -44,20 +45,19 @@ def update_draft_request(system, current_user, request, client=None, event_type=
         request.date = date
     if preferences:
         request.preferences = preferences
-    # --- NEW ---
     if client_expected_budget is not None:
         request.client_expected_budget = client_expected_budget
         
     print(f"Draft request (ID: {request.request_id}) updated.")
     return request
 
+@requires_role(allowed_roles="CS", error_message="Only Customer Service (CS) users can submit requests.")
 def initiate_event_request(system, current_user, request):
     """
     Use Case: Submit a completed draft for approval.
     Workflow: CS -> SCS
     """
-    if not current_user or current_user.role != "CS":
-        raise PermissionError("Only Customer Service (CS) users can submit requests.")
+    # Role check is handled by decorator!
     if request.owner != current_user or request.status != "Draft":
         raise PermissionError("This request cannot be submitted.")
 
@@ -72,13 +72,13 @@ def initiate_event_request(system, current_user, request):
     print(f"Event request (ID: {request.request_id}) submitted to '{scs_officer.username}'.")
     return request
 
+@requires_role(allowed_roles="SCS", error_message="Only SCS users can review.")
 def scs_review(system, current_user, request, is_approved, comments):
     """
     Use Case: Request Review (SCS) / Request Forwarding
     Workflow: SCS -> FM (if approved) or SCS -> Closed (if rejected)
     """
-    if not current_user or current_user.role != "SCS":
-        raise PermissionError("Only SCS users can review.")
+    # Role check is handled by decorator!
     
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
@@ -95,27 +95,24 @@ def scs_review(system, current_user, request, is_approved, comments):
         request.owner = current_user
         print(f"Request {request.request_id} rejected by SCS and marked as closed.")
 
+@requires_role(allowed_roles="FM", error_message="Only Financial Managers (FM) can review.")
 def fm_review(system, current_user, request, is_approved, comments, estimated_cost=None):
     """
     Use Case: Budget Evaluation
     Workflow: FM -> AM (if approved) or FM -> SCS (if rejected)
     """
-    if not current_user or current_user.role != "FM":
-        raise PermissionError("Only Financial Managers (FM) can review.")
+    # Role check is handled by decorator!
         
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
         
     request.add_comment(user=current_user, message=comments)
 
-    # --- NEW LOGIC ---
     if estimated_cost is not None:
         request.fm_estimated_cost = estimated_cost
         print(f"Estimated cost {estimated_cost} saved for Request {request.request_id}.")
-    # --- END NEW LOGIC ---
         
     if is_approved:
-        # As per use case, forward to Administration Manager
         am_manager = _find_user_or_raise(system, "AM")
         request.status = "Pending AM Review"
         request.owner = am_manager
@@ -126,12 +123,12 @@ def fm_review(system, current_user, request, is_approved, comments, estimated_co
         request.owner = scs_officer
         print(f"Request {request.request_id} rejected by FM, sent back to SCS.")
     
+@requires_role(allowed_roles="AM", error_message="Only Administration Managers (AM) can decide.")
 def am_decide(system, current_user, request, is_approved, comments):
     """
-Workflow: AM -> SCS (for finalization or to handle rejection)
+    Workflow: AM -> SCS (for finalization or to handle rejection)
     """
-    if not current_user or current_user.role != "AM":
-        raise PermissionError("Only Administration Managers (AM) can decide.")
+    # Role check is handled by decorator!
         
     if request.owner != current_user:
         raise PermissionError("You are not the owner of this request.")
@@ -148,4 +145,3 @@ Workflow: AM -> SCS (for finalization or to handle rejection)
         request.status = "REJECTED by AM"
         request.owner = scs_officer
         print(f"Request {request.request_id} REJECTED by AM, sent back to SCS.")
-
