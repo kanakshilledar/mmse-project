@@ -1,17 +1,12 @@
 # models.py
 # REFACTORED:
 # 1. Added `client_expected_budget` and `fm_estimated_cost` to EventRequest.
+# 2. FIXED: Removed the unused 'User' class.
+# 3. FIXED: Updated 'Comment' and 'EventRequest' classes to use
+#    dictionary access (e.g., user['username']) for user data.
 
 import datetime
 
-class User:
-    """Represents any user in the system."""
-    def __init__(self, username, role):
-        self.username = username
-        self.role = role # e.g., "CS", "SCS", "FM", "AM"
-
-    def __repr__(self):
-        return f"User(username='{self.username}', role='{self.role}')"
 
 class Client:
     """Represents a client record."""
@@ -26,12 +21,15 @@ class Client:
 class Comment:
     """Represents a single comment in the log."""
     def __init__(self, user, message):
-        self.user = user
+        self.user = user # user is now a dictionary
         self.message = message
         self.timestamp = datetime.datetime.now()
         
     def __repr__(self):
-        return f"Comment(user='{self.user.username}', msg='{self.message[:20]}...')"
+        # --- FIX 1 ---
+        # Was: self.user.username
+        user_name = self.user['username'] if self.user else "System"
+        return f"Comment(user='{user_name}', msg='{self.message[:20]}...')"
 
 class EventRequest:
     """
@@ -46,7 +44,7 @@ class EventRequest:
         self.event_type = event_type
         self.date = date
         self.preferences = preferences
-        self.initiated_by = initiated_by
+        self.initiated_by = initiated_by # This is a user dictionary
         
         # --- NEW BUDGET FIELDS ---
         self.client_expected_budget = client_expected_budget
@@ -54,7 +52,7 @@ class EventRequest:
         
         # --- State Management ---
         self.status = "Draft" 
-        self.owner = initiated_by 
+        self.owner = initiated_by # This is also a user dictionary
         
         # --- Log ---
         self.comments_log = [] # A list of Comment objects
@@ -62,10 +60,13 @@ class EventRequest:
     def add_comment(self, user, message):
         """Helper to add a structured comment."""
         if message:
+            # user is passed as a dictionary, which is what
+            # the Comment constructor now expects.
             comment = Comment(user=user, message=message)
             self.comments_log.append(comment)
         
     def __repr__(self):
-        owner_name = self.owner.username if self.owner else "None"
-        return f"EventRequest(id={self.request_id}, client='{self.client.name if self.client else 'N/A'}', status='{self.status}')"
-
+        # --- FIX 2 ---
+        # Was: self.owner.username
+        owner_name = self.owner['username'] if self.owner else "None"
+        return f"EventRequest(id={self.request_id}, client='{self.client.name if self.client else 'N/A'}', status='{self.status}', owner='{owner_name}')"

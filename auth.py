@@ -1,5 +1,7 @@
 # auth.py
 # NEW FILE: Contains reusable decorators for authentication.
+# FIXED: Now uses dictionary access (e.g., current_user['role'])
+#        to work with the new file-based user system.
 
 from functools import wraps
 
@@ -19,7 +21,9 @@ def requires_role(allowed_roles, error_message):
             if not current_user and len(args) > 1:
                 current_user = args[1] # Assumes (system, current_user, ...)
             
-            if not current_user or current_user.role not in allowed_roles:
+            # --- FIX IS HERE ---
+            # Changed 'current_user.role' to 'current_user['role']'
+            if not current_user or current_user['role'] not in allowed_roles:
                 raise PermissionError(error_message)
             # --- End of authorization logic ---
             

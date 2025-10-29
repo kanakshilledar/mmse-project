@@ -1,38 +1,46 @@
-import models
-from auth import requires_role # <-- Import the decorator
+# client_workflow.py
+# REFACTORED: Removed decorators and added explicit authorization
+# checks back into each function.
+# FIXED: Changed object access (.role) to dictionary access (['role'])
+#        to work with file-based user dictionaries.
 
-@requires_role(
-    allowed_roles=["CS", "SCS", "FM", "AM", "Marketing"], 
-    error_message="You do not have permission to search client records."
-)
+import models
+
 def search_client_by_name(system, current_user, client_name):
     """
     Use Case: Search for existing client.
-    Authorization is handled by the decorator.
+    Checks authorization for searching.
     """
-    # Authorization logic is removed!
+    # 1. Authorization Check
+    allowed_roles = ["CS", "SCS", "FM", "AM", "Marketing"] 
+    # --- FIX 1 ---
+    # Was: current_user.role
+    if not current_user or current_user['role'] not in allowed_roles:
+        raise PermissionError("You do not have permission to search client records.")
+        
+    # 2. Logic
     return system.find_client_by_name(client_name)
 
-@requires_role(
-    allowed_roles=["CS", "SCS"], 
-    error_message="Only Customer Service officers can create new clients."
-)
 def create_client(system, current_user, client_name):
     """
     Use Case: Create new client profile.
     Prevents duplication.
-    Authorization is handled by the decorator.
     """
-    # Authorization logic is removed!
+    # 1. Authorization Check
+    allowed_roles = ["CS", "SCS"]
+    # --- FIX 2 ---
+    # Was: current_user.role
+    if not current_user or current_user['role'] not in allowed_roles:
+        raise PermissionError("Only Customer Service officers can create new clients.")
 
-    # 1. Prevent Duplication (as per use case)
+    # 2. Prevent Duplication (as per use case)
     existing_client = system.find_client_by_name(client_name)
     if existing_client:
         raise ValueError(f"Client with name '{client_name}' already exists.")
         
-    # 2. Create and add the client
+    # 3. Create and add the client
     new_client = models.Client(name=client_name)
     system.add_client(new_client)
     
-    print(f"New client created: {new_client.name} (ID: {new_client.record_number})")
+    # print(f"New client created: {new_client.name} (ID: {new_client.record_number})")
     return new_client

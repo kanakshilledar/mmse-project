@@ -2,10 +2,13 @@
 # REFACTORED:
 # 1. `update_draft_request` delegate now passes `client_expected_budget`.
 # 2. `fm_review_request` delegate now passes `estimated_cost`.
+# 3. User management (add, find, login) now delegates to the 'users.py' module
+#    to use file-based storage instead of in-memory.
 
 import models
 import event_workflow
 import client_workflow
+import users  # This module handles file-based user storage
 
 class SEP_System:
     """
@@ -15,12 +18,12 @@ class SEP_System:
     - Delegates business logic to workflow modules.
     
     REFACTORED:
-    - Data lists (`users`, `clients`, `event_requests`) are now
+    - Data lists (`clients`, `event_requests`) are now
       dictionaries for fast O(1) lookups by ID.
-    - ID generation is handled by robust counters.
+    - User data is now managed by the 'users' module.
     """
     def __init__(self):
-        self.users = {}
+        # self.users = {}  <-- This is no longer the source of truth
         self.clients = {}
         self.event_requests = {}
         
@@ -32,20 +35,35 @@ class SEP_System:
 
     # --- User Management ---
     
-    def add_user(self, user):
-        """Adds a user to the system, using username as the key."""
-        if user.username in self.users:
-            raise ValueError(f"User with username '{user.username}' already exists.")
-        self.users[user.username] = user
+    def add_user(self):
+        """
+        [CHANGED]
+        Adds a user to the system by calling the interactive registration
+        function from users.py.
+        """
+        # The original signature (self, user) was from the in-memory
+        # object design. This new version calls the file-based,
+        # interactive function you provided in users.py.
+        return users.register_user()
 
     def find_user(self, username):
-        """Finds a user by their username."""
-        return self.users.get(username)
+        """
+        [CHANGED]
+        Finds a user by their username by calling users.py.
+        """
+        # Was: return self.users.get(username)
+        return users.find_user(username)
             
     def find_user_by_role(self, role):
-        """Finds the *first* user with a specific role."""
-        for user in self.users.values():
-            if user.role == role:
+        """
+        [CHANGED]
+        Finds the *first* user with a specific role by loading
+        all users from the 'users' module storage.
+        """
+        # This must now load all users, since self.users is not used.
+        all_users = users.load_data(users.USERS_FILE)
+        for user in all_users:
+            if user["role"] == role:
                 return user
         return None
 
@@ -92,10 +110,20 @@ class SEP_System:
     # --- Authentication ---
     
     def login(self, username):
+        """
+        [CHANGED]
+        Logs in a user. Uses find_user (which now checks files)
+        and handles the user as a dictionary, not an object.
+        
+        NOTE: This login does not check passwords. Your 'users.login_user()'
+        is a better function for interactive login. This method is
+        used by your automated tests.
+        """
         user = self.find_user(username)
         if user:
             self.current_user = user
-            print(f"User '{username}' logged in. Role: '{user.role}'")
+            # Access user data as a dictionary
+            # print(f"User '{username}' logged in. Role: '{user['role']}'")
         else:
             raise ValueError(f"User '{username}' not found.")
             
@@ -206,4 +234,3 @@ class SEP_System:
             is_approved=is_approved,
             comments=comments
         )
-
