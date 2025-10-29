@@ -6,8 +6,8 @@ from storage import USERS_FILE, save_data, load_data
 from users import find_user
 
 def test_change_password():
-    save_data(USERS_FILE, [{"username": "alice", "password": "123", "role": "SM"}])
-    user = {"username": "alice", "password": "123", "role": "SM"}
+    save_data(USERS_FILE, [{"id": 1, "username": "alice", "password": "123", "role": "SM", "subteam": "N/A"}])
+    user = {"id": 1, "username": "alice", "password": "123", "role": "SM", "subteam": "N/A"}
 
     users = load_data(USERS_FILE)
     users[0]["password"] = "xyz"
@@ -20,7 +20,7 @@ def test_change_password():
 def test_user_registration():
     save_data(USERS_FILE, [])
     users = load_data(USERS_FILE)
-    users.append({"username": "bob", "password": "abc", "role": "FM"})
+    users.append({"id": 1, "username": "bob", "password": "abc", "role": "FM", "subteam": "N/A"})
     save_data(USERS_FILE, users)
     found = find_user("bob")
     assert found is not None
