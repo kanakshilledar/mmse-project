@@ -60,5 +60,26 @@
     "username": "Maria",
     "role": "MEMBER",
     "subteam": "Catering"
+  },
+  {
+    "id": 10,
+    "username": "sarah",
+    "password": "abc",
+    "role": "SCS",
+    "subteam": "N/A"
+  },
+  {
+    "id": 11,
+    "username": "Sarah",
+    "password": "abc",
+    "role": "CS",
+    "subteam": "N/A"
+  },
+  {
+    "id": 12,
+    "username": "keene",
+    "password": "abc",
+    "role": "SCS",
+    "subteam": "N/A"
   }
 ]

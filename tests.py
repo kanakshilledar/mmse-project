@@ -1,0 +1,241 @@
+# tests.py
+# REFACTORED:
+# 1. Tests updated to pass `client_expected_budget` during draft updates.
+# 2. `test_full_event_workflow` now passes `estimated_cost`
+#    during FM review and asserts it was saved.
+
+from system import SEP_System
+from models import User
+
+def test_draft_handling_and_submission():
+    """
+    Verifies the "Save and Continue" draft logic.
+    """
+    print("\nRunning test: test_draft_handling_and_submission...")
+    
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.login("sarah")
+    client = system.create_client("Test Client")
+    print("PASSED: Setup complete.")
+
+    # 2. CS creates a blank draft
+    draft_request = system.create_draft_request()
+    assert draft_request.request_id == 1
+    assert draft_request.status == "Draft"
+    assert draft_request.owner.username == "sarah"
+    print("PASSED: Blank draft created.")
+    
+    # 3. CS updates the draft with partial info
+    system.update_draft_request(
+        request_id=1,
+        client_record_number=client.record_number
+    )
+    assert draft_request.client.name == "Test Client"
+    assert draft_request.status == "Draft"
+    print("PASSED: Draft partially updated.")
+    
+    # 4. CS tries to submit the incomplete draft
+    try:
+        system.initiate_event_request(request_id=1)
+        assert False, "Test FAILED: Incomplete draft was submitted."
+    except ValueError as e:
+        assert "Cannot submit incomplete draft" in str(e)
+        print("PASSED: Incomplete submission correctly blocked.")
+        
+    # 5. CS finishes filling out the draft (with new budget field)
+    system.update_draft_request(
+        request_id=1,
+        event_type="Workshop",
+        date="2025-12-01",
+        client_expected_budget=50000
+    )
+    assert draft_request.event_type == "Workshop"
+    assert draft_request.client_expected_budget == 50000
+    print("PASSED: Draft completed.")
+    
+    # 6. CS successfully submits the completed draft
+    system.initiate_event_request(request_id=1)
+    assert draft_request.status == "Pending SCS Review"
+    assert draft_request.owner.username == "janet"
+    print("PASSED: Completed draft submitted successfully.")
+    print("Test finished successfully.")
+
+
+def test_full_event_workflow():
+    """
+    Tests the full approval workflow: CS -> SCS -> FM -> AM -> SCS
+    """
+    print("\nRunning test: test_full_event_workflow...")
+
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.add_user(User(username="alice", role="FM"))
+    system.add_user(User(username="mike", role="AM"))
+    system.login("sarah")
+    client = system.create_client("Test Client for Event")
+
+    # 2. CS: Create, Update, and Submit Request
+    draft = system.create_draft_request()
+    system.update_draft_request(
+        request_id=draft.request_id,
+        client_record_number=client.record_number,
+        event_type="Workshop",
+        date="2025-12-01",
+        preferences="Decorations",
+        client_expected_budget=100000 # NEW
+    )
+    system.initiate_event_request(request_id=draft.request_id)
+    new_request = system.find_request_by_id(draft.request_id)
+    print("PASSED: Event initiation (Owner: SCS).")
+
+    # 3. SCS: Approve with a comment
+    system.login("janet")
+    scs_comment = "Looks good. Sending to finance."
+    system.scs_review_request(request_id=1, is_approved=True, comments=scs_comment)
+
+    # 4. Assert: Request moved to FM and comment was saved
+    assert new_request.status == "Pending FM Review"
+    assert new_request.owner.username == "alice"
+    assert len(new_request.comments_log) == 1
+    assert new_request.comments_log[0].user.username == "janet"
+    assert new_request.comments_log[0].message == scs_comment
+    print("PASSED: SCS approval (Owner: FM). Comment saved.")
+    
+    # 5. FM: Approve (with new estimated cost)
+    system.login("alice")
+    system.fm_review_request(
+        request_id=1, 
+        is_approved=True, 
+        comments="Budget approved.",
+        estimated_cost=95000 # NEW
+    )
+    
+    # 6. Assert: Request is with AM
+    assert new_request.status == "Pending AM Review"
+    assert new_request.owner.username == "mike"
+    assert len(new_request.comments_log) == 2
+    assert new_request.comments_log[1].user.username == "alice"
+    assert new_request.fm_estimated_cost == 95000 # NEW ASSERTION
+    print("PASSED: FM approval (Owner: AM). Cost saved.")
+    
+    # 7. AM: Approve
+    system.login("mike")
+    system.am_decide_request(request_id=1, is_approved=True, comments="Final approval from admin.")
+    
+    # 8. Assert: Request is back with SCS
+    assert new_request.status == "Approved - Pending Finalization"
+    assert new_request.owner.username == "janet"
+    assert len(new_request.comments_log) == 3
+    assert new_request.comments_log[2].user.username == "mike"
+    print("PASSED: AM approval (Owner: SCS).")
+    
+    print("Test finished successfully.")
+
+
+def test_scs_rejection_workflow():
+    """
+    UPDATED: Verifies the SCS rejection path (SCS -> Closed)
+    """
+    print("\nRunning test: test_scs_rejection_workflow...")
+
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="janet", role="SCS"))
+    system.login("sarah")
+    client = system.create_client("Test Client")
+    
+    # 2. CS: Create and submit
+    draft = system.create_draft_request()
+    system.update_draft_request(
+        draft.request_id, 
+        client.record_number, 
+        "Conference", 
+        "2026-01-01",
+        client_expected_budget=1000 # NEW
+    )
+    system.initiate_event_request(draft.request_id)
+    
+    request = system.find_request_by_id(draft.request_id)
+    assert request.owner.username == "janet"
+    print("PASSED: Request submitted to SCS.")
+    
+    # 3. SCS: Log in and REJECT
+    system.login("janet")
+    rejection_comment = "Client budget is too low. Marked as closed."
+    system.scs_review_request(request_id=1, is_approved=False, comments=rejection_comment)
+    
+    # 4. Assert: Request is marked as closed and owned by SCS
+    assert request.status == "Closed - Rejected"
+    assert request.owner.username == "janet"
+    
+    assert len(request.comments_log) == 1
+    assert request.comments_log[0].user.username == "janet"
+    assert request.comments_log[0].message == rejection_comment
+    print("PASSED: Request rejected and marked as closed.")
+    
+    print("Test finished successfully.")
+
+
+def test_client_management_workflow():
+    """
+    Test for Use Case: Client Record Management
+    """
+    print("\nRunning test: test_client_management_workflow...")
+    
+    # 1. Setup
+    system = SEP_System()
+    system.add_user(User(username="sarah", role="CS"))
+    system.add_user(User(username="alice", role="FM"))
+    
+    # 2. Test: Search for non-existent client
+    system.login("sarah")
+    client = system.search_client_by_name("College of Music")
+    assert client is None
+    print("PASSED: Search for non-existent client returned None.")
+    
+    # 3. Test: Create a new client
+    new_client = system.create_client("College of Music")
+    assert new_client is not None
+    assert new_client.record_number == "c1"
+    assert len(system.clients) == 1
+    print("PASSED: Client creation successful.")
+    
+    # 4. Test: Search for existing client
+    client = system.search_client_by_name("College of Music")
+    assert client is not None
+    assert client.name == "College of Music"
+    print("PASSED: Search for existing client successful.")
+    
+    # 5. Test: Prevent duplication
+    try:
+        system.create_client("College of Music")
+        assert False, "Test FAILED. Duplicate client was created."
+    except ValueError as e:
+        assert str(e) == "Client with name 'College of Music' already exists."
+        print("PASSED: Duplication successfully prevented.")
+
+    # 6. Test: Authorization (FM cannot create)
+    system.login("alice")
+    try:
+        system.create_client("New Client Inc.")
+        assert False, "Test FAILED. FM was able to create a client."
+    except PermissionError as e:
+        assert str(e) == "Only Customer Service officers can create new clients."
+        print("PASSED: Authorization check for client creation successful.")
+            
+    print("Test finished successfully.")
+
+
+# --- Run the tests ---
+if __name__ == "__main__":
+    test_draft_handling_and_submission()
+    test_full_event_workflow()
+    test_scs_rejection_workflow()
+    test_client_management_workflow()
+

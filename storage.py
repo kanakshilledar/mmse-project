@@ -3,7 +3,7 @@ import os
 
 USERS_FILE = "users.json"
 REQUESTS_FILE = "requests.json"
-
+CLIENTS_FILE = "clients.json"
 def ensure_file(file_path):
     if not os.path.exists(file_path):
         with open(file_path, "w") as f:
