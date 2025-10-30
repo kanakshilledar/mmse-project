@@ -3,7 +3,7 @@ from users import register_user, login_user
 from finance import finance_menu
 
 from constants import STAFF_REQ_FILE, EMPLOYEES_FILE, TASKS_FILE
-from sep_cli import menu_hr, menu_manager, menu_subteam,cs_menu
+from sep_cli import menu_hr, menu_manager, menu_subteam,cs_menu,scs_menu
 from system import SEP_System
 def main():
     print("=== SEP Management CLI ===")
@@ -32,9 +32,12 @@ def main():
                 elif role in ["LEAD", "MEMBER"]:
                     print("Staff menu selected.")
                     menu_subteam(user)  # Call the function for staff
-                elif role in ["CS","SCS"]:
+                elif role in ["CS"]:
                     print("Customer service menu selected.")
-                    cs_menu(system,user)
+                    cs_menu(user)
+                elif role in ["SCS"]:
+                    print("Senior Customer service menu selected")
+                    scs_menu(user)
                 else:
                     print("Unknown role!")
 
@@ -46,3 +49,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

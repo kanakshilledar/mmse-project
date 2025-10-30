@@ -74,5 +74,12 @@
     "password": "abc",
     "role": "CS",
     "subteam": "N/A"
+  },
+  {
+    "id": 12,
+    "username": "keene",
+    "password": "abc",
+    "role": "SCS",
+    "subteam": "N/A"
   }
 ]

@@ -14,7 +14,7 @@ def register_user():
         print("Username already exists.")
         return
     password = input("Enter password: ").strip()
-    role = input("Enter role (SM/PM/FM/HR/SCS/LEAD/MEMBER): ").strip().upper()
+    role = input("Enter role (SM/PM/FM/HR/CS/SCS/LEAD/MEMBER): ").strip().upper()
     if role in ["LEAD", "MEMBER"]:
         subteam = input(f"Enter subteam {username} is part of: ").strip()
     else:
@@ -52,3 +52,10 @@ def change_password(user):
     save_data(USERS_FILE, users)
     user["password"] = new
     print("Password updated successfully.")
+
+def find_user_by_role(role):
+    data = load_data(USERS_FILE)
+    for u in data:
+        if u.get("role") == role:
+            return u
+    return None
