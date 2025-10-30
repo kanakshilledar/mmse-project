@@ -131,7 +131,7 @@ def scs_review(rid, scs_user, approved, msg=""):
             if r.get("status") != "PENDING_SCS":
                 raise PermissionError("Not in SCS queue")
 
-            if r.get("owner_username") != scs_user["username"]:
+            if r.get("review_owner") != scs_user["username"]:
                 raise PermissionError("Not assigned to you")
 
             # log
@@ -157,9 +157,9 @@ def scs_review(rid, scs_user, approved, msg=""):
 def get_scs_queue(scs_user):
     return [
         r for r in _load()
-        if r.get("owner_username") == scs_user["username"]
-        and r.get("status") == "PENDING_SCS"
+        if r.get("status") == "PENDING_SCS"
     ]
+
 
 
 # --------------------------
